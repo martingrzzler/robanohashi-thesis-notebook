@@ -1,17 +1,14 @@
 import torch
-from transformers import BertModel
+from transformers import CLIPTextModelWithProjection, CLIPTextConfig
 
-
-class BertForRegression(BertModel):
-    def __init__(self, config):
+class CLIPForRegression(CLIPTextModelWithProjection):
+    def __init__(self, config: CLIPTextConfig):
         super().__init__(config)
-        self.dropout = torch.nn.Dropout(config.hidden_dropout_prob)
         self.regressor = torch.nn.Linear(config.hidden_size, 1)
-        
-    def forward(self, input_ids, **kwargs):
-        outputs = super().forward(input_ids=input_ids, **kwargs)
-        cls_output = outputs.last_hidden_state[:, 0, :]
-        cls_output = self.dropout(cls_output)
-        concreteness_score = self.regressor(cls_output)
+        self.dropout = torch.nn.Dropout(0.1)
 
-        return concreteness_score
+    def forward(self, **kwargs):
+        outputs = super().forward(**kwargs)
+        outputs = self.dropout(outputs.text_embeds)
+        outputs = self.regressor(outputs)
+        return outputs
